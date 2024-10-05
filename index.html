@@ -157,11 +157,11 @@
     }
 
     function softmax(x) {
-        const min = Math.min(...x);
+        const max = Math.max(...x);
         const result = [];
         let sum = 0;
         for (let i = 0; i < x.length; i++) {
-            const ei = x[i] - min;
+            const ei = Math.exp(x[i] - max);
             result.push(ei);
             sum += ei;
         }
@@ -170,7 +170,6 @@
         }
         console.log(x);
         console.log(result);
-        Math.exp()
         return result;
     }
 
@@ -223,7 +222,7 @@
         const input_hidden_2_lelu = apply_lelu(input_hidden_2_wbias);
         const input_hidden_3 = matmul([input_hidden_2_lelu], mnist_weights[2])[0];
         const input_hidden_3_wbias = add_bias(input_hidden_3, mnist_biases[2]);
-        const input_hidden_3_lelu = softmax(apply_lelu(input_hidden_3_wbias));
+        const input_hidden_3_lelu = softmax(input_hidden_3_wbias);
         for (let i = 0; i < input_hidden_3_lelu.length; i++) {
             let elem = document.getElementById('res' + i);
             elem.innerText = `${i}: ${input_hidden_3_lelu[i]}`;
