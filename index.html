@@ -1,0 +1,356 @@
+<style>
+    #canvas_div {
+        text-align: center;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    canvas {
+      border: 2px solid black;
+    }
+    #flex-item {
+        text-align: left;
+    }
+    </style>
+    
+    <div id="canvas_div" style="overflow-x: auto;">
+    <canvas id="canvas" width="560" height="560"></canvas>
+    <br></br>
+    <button onclick="javascript:clearArea();return false;">Очистить</button>
+    <button onclick="javascript:get_and_crop();return false;">Определить</button>
+    <br></br>
+    <div style="align-items:self-start;">
+        <div class="flex-item" id="res0">0: </div>
+        <div class="flex-item" id="res1">1: </div>
+        <div class="flex-item" id="res2">2: </div>
+        <div class="flex-item" id="res3">3: </div>
+        <div class="flex-item" id="res4">4: </div>
+        <div class="flex-item" id="res5">5: </div>
+        <div class="flex-item" id="res6">6: </div>
+        <div class="flex-item" id="res7">7: </div>
+        <div class="flex-item" id="res8">8: </div>
+        <div class="flex-item" id="res9">9: </div>
+    <script type='text/javascript' src='mnist_weights.js'></script>
+    <script type='text/javascript' src='mnist_biases.js'></script>
+    <script>
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    context.lineWidth = 16;
+    context.fillStyle = 'blue';
+    context.strokeStyle = 'blue';
+    let isDrawing = false;
+    let x = 0;
+    let y = 0;
+    var offsetX;
+    var offsetY;
+
+
+    
+    function startup() {
+        canvas.addEventListener('touchstart', handleStart);
+        canvas.addEventListener('touchend', handleEnd);
+        canvas.addEventListener('touchcancel', handleCancel);
+        canvas.addEventListener('touchmove', handleMove);
+        canvas.addEventListener('mousedown', (e) => {
+            x = e.offsetX;
+            y = e.offsetY;
+            isDrawing = true;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing) {
+            drawLine(context, x, y, e.offsetX, e.offsetY);
+            x = e.offsetX;
+            y = e.offsetY;
+            }
+        });
+        
+        canvas.addEventListener('mouseup', (e) => {
+            if (isDrawing) {
+            drawLine(context, x, y, e.offsetX, e.offsetY);
+            x = 0;
+            y = 0;
+            isDrawing = false;
+            }
+        });
+    }
+    
+    document.addEventListener("DOMContentLoaded", startup);
+    
+    const ongoingTouches = [];
+    
+    function handleStart(evt) {
+        evt.preventDefault();
+        const touches = evt.changedTouches;
+        offsetX = canvas.getBoundingClientRect().left;
+        offsetY = canvas.getBoundingClientRect().top;
+        for (let i = 0; i < touches.length; i++) {
+            ongoingTouches.push(copyTouch(touches[i]));
+        }
+    }
+    
+    function handleMove(evt) {
+        evt.preventDefault();
+        const touches = evt.changedTouches;
+        for (let i = 0; i < touches.length; i++) {
+            const idx = ongoingTouchIndexById(touches[i].identifier);
+            if (idx >= 0) {
+            context.beginPath();
+            context.moveTo(ongoingTouches[idx].clientX - offsetX, ongoingTouches[idx].clientY - offsetY);
+            context.lineTo(touches[i].clientX - offsetX, touches[i].clientY - offsetY);
+            context.lineWidth = 15;
+            context.lineJoin = "round";
+            context.closePath();
+            context.stroke();
+            ongoingTouches.splice(idx, 1, copyTouch(touches[i]));  // swap in the new touch record
+            }
+        }
+    }
+    
+    function handleEnd(evt) {
+        evt.preventDefault();
+        const touches = evt.changedTouches;
+        for (let i = 0; i < touches.length; i++) {
+            let idx = ongoingTouchIndexById(touches[i].identifier);
+            if (idx >= 0) {
+                ongoingTouches.splice(idx, 1);  // remove it; we're done
+            }
+        }
+    }
+    
+    function handleCancel(evt) {
+        evt.preventDefault();
+        const touches = evt.changedTouches;
+        for (let i = 0; i < touches.length; i++) {
+            let idx = ongoingTouchIndexById(touches[i].identifier);
+            ongoingTouches.splice(idx, 1);  // remove it; we're done
+        }
+    }
+    
+    function copyTouch({ identifier, clientX, clientY }) {
+        return { identifier, clientX, clientY };
+    }
+    
+    function ongoingTouchIndexById(idToFind) {
+        for (let i = 0; i < ongoingTouches.length; i++) {
+            const id = ongoingTouches[i].identifier;
+            if (id === idToFind) {
+            return i;
+            }
+        }
+        return -1;    // not found
+    }
+    
+    function drawLine(context, x1, y1, x2, y2) {
+        context.beginPath();
+        context.lineWidth = 15;
+        context.lineJoin = "round";
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y2);
+        context.closePath();
+        context.stroke();
+    }
+    
+    function clearArea() {
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    }
+
+    function softmax(x) {
+        const min = Math.min(...x);
+        const result = [];
+        let sum = 0;
+        for (let i = 0; i < x.length; i++) {
+            const ei = x[i] - min;
+            result.push(ei);
+            sum += ei;
+        }
+        for (let i = 0; i < x.length; i++) {
+            result[i] /= sum;
+        }
+        console.log(x);
+        console.log(result);
+        Math.exp()
+        return result;
+    }
+
+    function lelu(x) {
+        return Math.max(x, x * 0.01);
+    }
+
+    function apply_lelu(a) {
+        const result = [];
+        for (let i = 0; i < a.length; i++) {
+            result.push(lelu(a[i]));
+        }
+        return result;
+    }
+
+    function add_bias(a, b) {
+        const result = [];
+        if (a.length == b.length) {
+            for (let i = 0; i < a.length; i++) {
+                result.push(a[i] + b[i]);
+            }
+        }
+        return result;
+    }
+
+    function matmul(a, b) {
+        const result = [];
+        if (a[0].length == b.length) {
+            for (let i = 0; i < a.length; i++) {
+                const row = [];
+                for (let j = 0; j < b[0].length; j++) {
+                    let elem = 0
+                    for (let k = 0; k < b.length; k++) {
+                        elem += a[i][k] * b[k][j];
+                    }
+                    row.push(elem);
+                }
+                result.push(row);
+            }
+        }
+        return result;
+    }
+
+    function forward(array) {
+        const input_hidden = matmul([array], mnist_weights[0])[0];
+        const input_hidden_wbias = add_bias(input_hidden, mnist_biases[0]);
+        const input_hidden_lelu = apply_lelu(input_hidden_wbias);
+        const input_hidden_2 = matmul([input_hidden_lelu], mnist_weights[1])[0];
+        const input_hidden_2_wbias = add_bias(input_hidden_2, mnist_biases[1]);
+        const input_hidden_2_lelu = apply_lelu(input_hidden_2_wbias);
+        const input_hidden_3 = matmul([input_hidden_2_lelu], mnist_weights[2])[0];
+        const input_hidden_3_wbias = add_bias(input_hidden_3, mnist_biases[2]);
+        const input_hidden_3_lelu = softmax(apply_lelu(input_hidden_3_wbias));
+        for (let i = 0; i < input_hidden_3_lelu.length; i++) {
+            let elem = document.getElementById('res' + i);
+            elem.innerText = `${i}: ${input_hidden_3_lelu[i]}`;
+            elem.style.backgroundColor = `rgb(${255 * (1 - input_hidden_3_lelu[i])} ${255 * input_hidden_3_lelu[i]} 0)`
+        }
+        return;
+    }
+    
+    function numpylike_split(array, n) {
+        const splitted = [];
+        if (n > array.length) {
+            n = array.length;
+        }
+        const batch_length = Math.floor(array.length / n);
+        const oversized = array.length % n;
+        const normal = n - oversized;
+        for (let i = 0; i < oversized; i++) {
+            splitted.push(array.slice(i * (batch_length + 1), (i + 1) * (batch_length + 1)));
+        }
+        for (let i = 0; i < normal; i++) {
+            splitted.push(array.slice(i * (batch_length) + oversized * (batch_length + 1), (i + 1) * (batch_length) + oversized * (batch_length + 1)));
+        }
+        return splitted;
+    }
+
+    function resize(array) {
+        const scale_factor = Math.max(array[0].length, array.length) / 20;
+        for (let i = 0; i < array.length; i++) {
+            array[i] = numpylike_split(array[i], Math.ceil(array[i].length / scale_factor));
+            for (let j = 0; j < array[i].length; j++) {
+                let sum = array[i][j].reduce((accumulator, currentValue) => {
+                    return accumulator + currentValue
+                }, 0);
+                array[i][j] = Math.round(sum / array[i][j].length);
+            }
+        }
+        array = numpylike_split(array, Math.ceil(array.length / scale_factor));
+        for (let i = 0; i < array.length; i++) {
+            const new_line = [];
+            for (let k = 0; k < array[i][0].length; k++) {
+                let sum = 0;
+                for (let j = 0; j < array[i].length; j++) {
+                    sum += array[i][j][k];
+                }
+                new_line.push(Math.round(sum / array[i].length) / 255);
+                // new_line.push(Math.ceil(sum / array[i].length) > 0 ? 1 : 0);
+            }
+            array[i] = new_line;
+        }
+        const left_shift = Math.ceil((20 - array[0].length) / 2);
+        const top_shift = Math.round((20 - array.length) / 2);
+        const result = [];
+        let result_hr = [];
+        for (let i = 0; i < 28; i++) {
+            const line = [];
+            for (let j = 0; j < 28; j++) {
+                if (i >= 4 + top_shift && i < array.length + 4 + top_shift && j >= 4 + left_shift && j < array[0].length + 4 + left_shift) {
+                    line.push(array[i - 4 - top_shift][j - 4 - left_shift] > 0 ? '█' : ' ');
+                } else {
+                    line.push(' ');
+                }
+            }
+            result_hr.push(line.join(''));
+        }
+        result_hr = result_hr.join('\n');
+        for (let i = 0; i < 28; i++) {
+            for (let j = 0; j < 28; j++) {
+                if (i >= 4 + top_shift && i < array.length + 3 + top_shift && j >= 4 + left_shift && j < array[0].length + 3 + left_shift) {
+                    result.push(array[i - 4 - top_shift][j - 4 - left_shift]);
+                } else {
+                    result.push(0);
+                }
+            }
+        }
+        console.log(result_hr);
+        forward(result);
+    }
+
+    function get_and_crop() {
+        const image_data = context.getImageData(0, 0, 560, 560);
+        const only_alpha = image_data.data.filter(function(value, index, Arr) {
+            return index % 4 == 3;
+        });
+        let matricized = [];
+        for (let i = 0; i < 560; i++) {
+            let line = only_alpha.slice(i * 560, (i + 1) * 560);
+            let sum = line.reduce((accumulator, currentValue) => {
+                return accumulator + currentValue
+            }, 0);
+            if (sum > 0) {
+                matricized.push(line);
+            }
+        }
+        let min_data = 0;
+        let max_data = 559;
+        for (let i = 0; i < 560; i++) {
+            let sum = 0;
+            for (let j = 0; j < matricized.length; j++) {
+                sum += matricized[j][i];
+            }
+            if (sum == 0) {
+                min_data = i;
+            } else {
+                break;
+            }
+        }
+        for (let i = 559; i > 0; i--) {
+            let sum = 0;
+            for (let j = 0; j < matricized.length; j++) {
+                sum += matricized[j][i];
+            }
+            if (sum == 0) {
+                max_data = i;
+            } else {
+                break;
+            }
+        }
+        let final_matricized = [];
+        for (let i = 0; i < matricized.length; i++) {
+            let line = matricized[i];
+            let sum = line.reduce((accumulator, currentValue) => {
+                return accumulator + currentValue
+            }, 0);
+            if (sum > 0) {
+                final_matricized.push(line.slice(min_data, max_data + 1));
+            }
+        }
+        resize(final_matricized);
+    }
+    </script>
