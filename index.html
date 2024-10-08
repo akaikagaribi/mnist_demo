@@ -8,13 +8,19 @@
     canvas {
       border: 2px solid black;
     }
-    #flex-item {
-        text-align: left;
+    #whatsees {
+        image-rendering: optimizeSpeed;             /* Older versions of FF          */
+        image-rendering: -moz-crisp-edges;          /* FF 6.0+                       */
+        image-rendering: -webkit-optimize-contrast; /* Safari                        */
+        image-rendering: -o-crisp-edges;            /* OS X & Windows Opera (12.02+) */
+        image-rendering: pixelated;                 /* Awesome future-browsers       */
+        -ms-interpolation-mode: nearest-neighbor;   /* IE                            */
     }
     </style>
     
     <div id="canvas_div" style="overflow-x: auto;">
     <canvas id="canvas" width="560" height="560"></canvas>
+    <canvas id="whatsees" width="28" height="28" style="width: 560px; height: 560px;"></canvas>
     <br></br>
     <button onclick="javascript:clearArea();return false;">Очистить</button>
     <button onclick="javascript:get_and_crop();return false;">Определить</button>
@@ -168,8 +174,6 @@
         for (let i = 0; i < x.length; i++) {
             result[i] /= sum;
         }
-        console.log(x);
-        console.log(result);
         return result;
     }
 
@@ -248,6 +252,14 @@
         return splitted;
     }
 
+    function display_bruh(array) {
+        const canvas = document.getElementById('whatsees');
+        const ctx = canvas.getContext('2d');
+        bytes_array = Uint8ClampedArray.from(array);
+        idata = new ImageData(bytes_array, 28, 28);
+        ctx.putImageData(idata, 0, 0);
+    }
+
     function resize(array) {
         const scale_factor = Math.max(array[0].length, array.length) / 20;
         for (let i = 0; i < array.length; i++) {
@@ -267,7 +279,7 @@
                 for (let j = 0; j < array[i].length; j++) {
                     sum += array[i][j][k];
                 }
-                new_line.push(Math.round(sum / array[i].length) / 255);
+                new_line.push(Math.round(sum / array[i].length));
                 // new_line.push(Math.ceil(sum / array[i].length) > 0 ? 1 : 0);
             }
             array[i] = new_line;
@@ -275,29 +287,25 @@
         const left_shift = Math.ceil((20 - array[0].length) / 2);
         const top_shift = Math.round((20 - array.length) / 2);
         const result = [];
-        let result_hr = [];
-        for (let i = 0; i < 28; i++) {
-            const line = [];
-            for (let j = 0; j < 28; j++) {
-                if (i >= 4 + top_shift && i < array.length + 4 + top_shift && j >= 4 + left_shift && j < array[0].length + 4 + left_shift) {
-                    line.push(array[i - 4 - top_shift][j - 4 - left_shift] > 0 ? '█' : ' ');
-                } else {
-                    line.push(' ');
-                }
-            }
-            result_hr.push(line.join(''));
-        }
-        result_hr = result_hr.join('\n');
+        const result_todis = [];
         for (let i = 0; i < 28; i++) {
             for (let j = 0; j < 28; j++) {
-                if (i >= 4 + top_shift && i < array.length + 3 + top_shift && j >= 4 + left_shift && j < array[0].length + 3 + left_shift) {
-                    result.push(array[i - 4 - top_shift][j - 4 - left_shift]);
+                if (i >= 4 + top_shift && i <= array.length + 3 + top_shift && j >= 4 + left_shift && j <= array[0].length + 3 + left_shift) {
+                    result.push(array[i - 4 - top_shift][j - 4 - left_shift] / 255);
+                    result_todis.push(0);
+                    result_todis.push(0);
+                    result_todis.push(0);
+                    result_todis.push(array[i - 4 - top_shift][j - 4 - left_shift]);
                 } else {
                     result.push(0);
+                    result_todis.push(0);
+                    result_todis.push(0);
+                    result_todis.push(0);
+                    result_todis.push(0);
                 }
             }
         }
-        console.log(result_hr);
+        display_bruh(result_todis)
         forward(result);
     }
 
